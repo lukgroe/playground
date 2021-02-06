@@ -6,8 +6,8 @@ import math
 
 mu_0 = 0
 var_0 = 1
-mu_1 = 0.2
-var_1 = 0.8
+mu_1 = -0.2
+var_1 = .9
 
 # Some constants for numerical purposes
 size = 50
@@ -15,12 +15,19 @@ number_of_samples = 3
 granularity = 1500
 epsilon = 0.000000000000001
 infty= 1000000000000000
-distribution_support = np.linspace(-4, 4, granularity)
+distribution_support = np.linspace(-10, 10, granularity)
 uniform_support = np.linspace(0, 1, granularity)
+smooth_parameter = 10
 
 
-def create_plot_to_function(numbers, support=uniform_support, show=True):
-    plt.plot(support, numbers, 'ro', markersize=1, color='black')
+def create_sample(size, distribution="uniform"):
+    if distribution == "uniform":
+        result = np.random.uniform(size=size, low=0, high=1)
+    return result
+
+
+def create_plot_to_function(numbers, support=uniform_support, show=True, col='black'):
+    plt.plot(support, numbers, 'ro', markersize=.5, color=col)
     if show:
         plt.show()
 
@@ -49,7 +56,7 @@ def empirical_df(numbers, support=uniform_support):
     return result
 
 
-def normal_density(support, mu=0, var=1):
+def normal_density(support=distribution_support, mu=0, var=1):
     result = []
     for time in support:
         result += [(1 / (math.sqrt(2 * math.pi * var))) * (math.e ** (- ((time - mu) ** 2) / (2 * var)))]
@@ -57,35 +64,125 @@ def normal_density(support, mu=0, var=1):
     return result
 
 
-def integrate_function(numbers, support=uniform_support):
+#def get_normal_quant_density(mu=0,var=1):
+ #   result = []
+  #  helper = list(normal_density(distribution_support, mu, var))
+   # print(helper)
+   # for i in helper:
+    #    result += [1/i]
+    #print(result)
+ #   return result
+#
+
+def integrate_function(numbers, support=distribution_support):
     width = support[1]-support[0]
-    result =[]
-    old = 0
+    result = []
+    current = 0
     for i in numbers:
-        result = i
+        current = current + i*width
+        result += [current]
+    result = np.array(result)
     return result
 
 
+def differentiate_function(numbers, support=distribution_support):
+    sup = support[1]-support[0]
+    #result = [(numbers[1] - numbers[0]) / sup]
+    result = []
+    num_old = numbers[0]
+    #for num in numbers:
+    for i in range(granularity):
+        if len(result)<smooth_parameter:
+            result += [(numbers[i]-num_old)/sup]
+            num_old = numbers[i]
+        else:
+            helper = 0
+            for smh in range(smooth_parameter):
+                helper += (numbers[i-smh]-numbers[i-smh-1])/sup
+            helper = helper/smooth_parameter
+
+            result +=[helper]      #[((numbers[i]-numbers[i-1])/sup + (numbers[i-1]-numbers[i-2])/sup + (numbers[i-2]-numbers[i-3])/sup + (numbers[i-3]-numbers[i-4])/sup +(numbers[i-4]-numbers[i-5])/sup)/5]
+            num_old = numbers[i]
+
+
+    """if num > num_old:
+        result += [(num - num_old) / sup]
+        num_old = num
+    """
+
+    result = np.array(result)
     return result
 
 
-def create_sample(size, distribution="uniform"):
-    if distribution == "uniform":
-        result = np.random.uniform(size=size, low=0, high=1)
+def get_quantile_function(numbers, support=distribution_support):
+    result = []
+    numbers = list(numbers)
+    numbers += [42]
+    support = np.concatenate((support, np.array([support[len(support)-1]])))
+
+    for i in uniform_support:
+        last = i
+        for j in range(granularity+1):
+            if(last < numbers[j]):
+                result += [support[j]]
+
+                last = 42
+
     return result
+
+
+def compose_functions(support_2, numbers_1, numbers_2):
+    result = []
+    support_2 = list(support_2)
+    support_2 += [infty]
+    numbers_2 = list(numbers_2)
+    numbers_2 += [numbers_2[len(numbers_2)-1]]
+
+    for i in numbers_1:
+        last = i
+        for j in range(granularity+1):
+            if support_2[j] > last:
+                result += [numbers_2[j] ]
+                last = infty
+    result = np.array(result)
+    return result
+
+
+def prod(numbers1, numbers2):
+    result = []
+    for i,j in zip(numbers1,numbers2):
+        result += [i*j]
+
+    return result
+
 
 
 check = create_sample(size)
-#print(sorted(check))
-#print(map_array_on_support(sorted(check)))
-#plt.ion()
-#create_plot_to_function(empirical_df(check))
+
+dens_null = normal_density(mu=mu_0,var=var_0)
+dens_alter = normal_density(mu=mu_1, var=var_1)
+
+distribution_null = integrate_function(dens_null, distribution_support)
+
+distribution_alter = integrate_function(dens_alter, distribution_support)
+
+quant_null = get_quantile_function(distribution_null)
+quant_alter = get_quantile_function(distribution_alter)
 
 
+quant_dens_null = differentiate_function(quant_null, uniform_support)#get_normal_quant_density(mu=mu_0,var=var_0)
+quant_dens_alter = differentiate_function(quant_alter, uniform_support)
 
-# plot sample, plot density
-create_plot_to_function(normal_density(distribution_support), distribution_support, False)
-create_plot_to_function(normal_density(distribution_support), distribution_support)
+compose = prod(compose_functions(distribution_support,quant_null ,dens_alter), quant_dens_null)
+
+#check dif and int
+#create_plot_to_function(dens_null,distribution_support, show=False, col='red')
+#create_plot_to_function(differentiate_function(integrate_function(dens_null),distribution_support),distribution_support)
+
+create_plot_to_function(integrate_function(compose, uniform_support), uniform_support)
+
+#create_plot_to_function(integrate_function(compose,uniform_support), uniform_support)
+#create_plot_to_function(quant_null, distribution_support, col='red',show= False)
 
 
 """
