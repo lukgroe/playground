@@ -2,22 +2,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 
-# First: Set the key parameters for the described scenario
-
-mu_0 = 0
-var_0 = 1
-mu_1 = -0.2
-var_1 = .9
 
 # Some constants for numerical purposes
-size = 50
+size = 2500
 number_of_samples = 3
-granularity = 1500
+granularity = 40000
 epsilon = 0.000000000000001
 infty= 1000000000000000
-distribution_support = np.linspace(-10, 10, granularity)
+distribution_support = np.linspace(-3.5, 3.5, granularity)
 uniform_support = np.linspace(0, 1, granularity)
-smooth_parameter = 10
+smooth_parameter = 45
 
 
 def create_sample(size, distribution="uniform"):
@@ -27,7 +21,7 @@ def create_sample(size, distribution="uniform"):
 
 
 def create_plot_to_function(numbers, support=uniform_support, show=True, col='black'):
-    plt.plot(support, numbers, 'ro', markersize=.5, color=col)
+    plt.plot(support, numbers, 'ro', markersize=.4, color=col)
     if show:
         plt.show()
 
@@ -151,19 +145,101 @@ def compose_functions(support_2, numbers_1, numbers_2):
 def prod(numbers1, numbers2):
     result = []
     for i,j in zip(numbers1,numbers2):
-        result += [i*j]
+        result += [i*j]#
 
     return result
 
 
+def smooth(numbers, times):
+    result = numbers
+    for i in range(times):
+        result = differentiate_function(integrate_function(result,uniform_support),uniform_support)
+    return result
 
-check = create_sample(size)
+
+def measure_preserving_opt(numbers, rev=True):
+    result = []
+    #result = [sorted(numbers).index(x) for x in numbers]
+    list_to_check = list(numbers)
+    location=0
+    for check in range(granularity):
+        help = 0
+        for i in range(granularity):
+            if help <= list_to_check[i]:
+                help = list_to_check[i]
+                location = i
+        result += [location]
+        list_to_check[location]=-1
+    if rev:
+        list.reverse(result)
+    return result
+
+
+def apply_measure_preserving_opt_to_numbers(numbers, measure):
+    result = [numbers[i] for i in measure]
+    return result
+
+
+def apply_measure_opt_on_mapped_sample(sample, opt_uniform_support):
+    result = []
+    for i in sample:
+        for check in range(granularity):
+            if i == uniform_support[check]:
+                result += [ uniform_support[opt_uniform_support[check]] ]
+    return result
+
+
+def apply_measure_opt_on_mapped_sample2(sample, measure):
+    result = [0]*granularity
+    for i in sample:
+        for check in range(granularity):
+            if i == uniform_support[check]:
+                result[check] += 1
+    result = apply_measure_preserving_opt_to_numbers(result, orders)
+    help = 0
+    calc = 0
+    for i in result:
+        calc = calc + i/size
+        result[help] = calc
+        help +=1
+    return result
+
+
+def transform_uniform_sample_in_any_dist(sample, quantil):
+    result = []
+    for i in sample:
+        for check in range(granularity):
+            if i < uniform_support[check]:
+                result += [quantil[check] ]
+                i=infty
+
+
+    result = map_array_on_support(result, distribution_support)
+    return result
+
+
+def transform_mapped_dist_support_sample_on_uniform_support_with_dist(sample, dist):
+    result = []
+    for i in sample:
+        for check in range(granularity):
+            if i < distribution_support[check]:
+                result += [dist[check]]
+                i=infty
+    result = map_array_on_support(result, uniform_support)
+    return result
+
+
+
+
+mu_0 = 0
+var_0 = 1
+mu_1 = 0.6#0.05
+var_1 = 0.7#0.8
 
 dens_null = normal_density(mu=mu_0,var=var_0)
 dens_alter = normal_density(mu=mu_1, var=var_1)
 
 distribution_null = integrate_function(dens_null, distribution_support)
-
 distribution_alter = integrate_function(dens_alter, distribution_support)
 
 quant_null = get_quantile_function(distribution_null)
@@ -173,16 +249,42 @@ quant_alter = get_quantile_function(distribution_alter)
 quant_dens_null = differentiate_function(quant_null, uniform_support)#get_normal_quant_density(mu=mu_0,var=var_0)
 quant_dens_alter = differentiate_function(quant_alter, uniform_support)
 
-compose = prod(compose_functions(distribution_support,quant_null ,dens_alter), quant_dens_null)
 
-#check dif and int
-#create_plot_to_function(dens_null,distribution_support, show=False, col='red')
-#create_plot_to_function(differentiate_function(integrate_function(dens_null),distribution_support),distribution_support)
+compose_null =integrate_function(prod(compose_functions(distribution_support, quant_null, dens_null), quant_dens_null), uniform_support)
+compose_alter =integrate_function(prod(compose_functions(distribution_support, quant_null, dens_alter), quant_dens_null), uniform_support)
 
-create_plot_to_function(integrate_function(compose, uniform_support), uniform_support)
+compose_alter_dens = smooth(differentiate_function(compose_alter,uniform_support), 1)
 
-#create_plot_to_function(integrate_function(compose,uniform_support), uniform_support)
-#create_plot_to_function(quant_null, distribution_support, col='red',show= False)
+orders = measure_preserving_opt(compose_alter_dens)
+
+density_final = apply_measure_preserving_opt_to_numbers(compose_alter_dens, orders)
+
+create_plot_to_function(differentiate_function(integrate_function(density_final, uniform_support), uniform_support), uniform_support, show=False, col='blue')
+create_plot_to_function(differentiate_function(compose_null,uniform_support), uniform_support, show=False)
+create_plot_to_function(differentiate_function(integrate_function(compose_alter_dens, uniform_support), uniform_support), uniform_support, col='red')
+
+create_plot_to_function(integrate_function(density_final, uniform_support), uniform_support, show=False, col='blue')
+create_plot_to_function(compose_null, uniform_support, show=False)
+create_plot_to_function(integrate_function(compose_alter_dens, uniform_support), uniform_support, col='red')
+
+
+sample = map_array_on_support(create_sample(size))
+
+sample_alter = transform_mapped_dist_support_sample_on_uniform_support_with_dist(transform_uniform_sample_in_any_dist(sample, quant_alter), distribution_null)
+print(sample_alter)
+print(distribution_support)
+
+#check_opt = apply_measure_opt_on_mapped_sample(sample, orders)
+#check_opt2 = apply_measure_opt_on_mapped_sample(sample_alter, orders)
+check_opt = sample
+check_opt2 = apply_measure_opt_on_mapped_sample2(sample_alter, orders)
+
+#print(check_opt)
+create_plot_to_function(empirical_df(sample_alter), uniform_support, col='red', show=False)
+#create_plot_to_function(empirical_df(check_opt2), uniform_support, col='blue', show=False)
+create_plot_to_function(check_opt2, uniform_support, col='blue', show=False)
+create_plot_to_function(empirical_df(check_opt), uniform_support)
+
 
 
 """
