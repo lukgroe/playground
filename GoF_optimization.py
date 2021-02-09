@@ -1,17 +1,18 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import math
+#import GetQuantiles as q
 
 
 # Some constants for numerical purposes
-size = 2500
+size = 10
 number_of_samples = 3
-granularity = 40000
+granularity = 15000
 epsilon = 0.000000000000001
 infty= 1000000000000000
-distribution_support = np.linspace(-3.5, 3.5, granularity)
+distribution_support = np.linspace(-6, 6, granularity)
 uniform_support = np.linspace(0, 1, granularity)
-smooth_parameter = 45
+smooth_parameter = 1
 
 
 def create_sample(size, distribution="uniform"):
@@ -22,6 +23,7 @@ def create_sample(size, distribution="uniform"):
 
 def create_plot_to_function(numbers, support=uniform_support, show=True, col='black'):
     plt.plot(support, numbers, 'ro', markersize=.4, color=col)
+    plt.ylim(0, 2)
     if show:
         plt.show()
 
@@ -107,7 +109,7 @@ def differentiate_function(numbers, support=distribution_support):
     result = np.array(result)
     return result
 
-
+"""
 def get_quantile_function(numbers, support=distribution_support):
     result = []
     numbers = list(numbers)
@@ -122,6 +124,40 @@ def get_quantile_function(numbers, support=distribution_support):
 
                 last = 42
 
+    return result
+"""
+
+
+def get_quantil_at_point(point, distribution, support=distribution_support):
+    new_sup = distribution
+    new_map = support
+    result = infty
+    for i in range(granularity-1):
+        if new_sup[i] < point and point < new_sup[i+1]:
+            result = new_map[i] + (point - new_sup[i])*((new_map[i+1]-new_map[i])/(new_sup[i+1]-new_sup[i]))
+            break
+    return result
+
+
+def get_quantile_function(distribution, support=distribution_support):
+    result = []
+    for i in uniform_support:
+        result += [get_quantil_at_point(i, distribution)]
+    result[0] = distribution_support[0]#result[1] -(result[2]-result[1])
+    for i in range(granularity):
+        if result[i]+1>infty:
+            result[i]=distribution_support[granularity-1]
+    return result
+
+
+def get_quantil_dens(distribution):
+    result = differentiate_function(get_quantile_function(distribution), uniform_support)
+    help = 0
+    for i in result:
+        if i < 0:
+            result[help]=0
+        help +=1
+    result[0] = result[1]
     return result
 
 
@@ -189,19 +225,24 @@ def apply_measure_opt_on_mapped_sample(sample, opt_uniform_support):
     return result
 
 
-def apply_measure_opt_on_mapped_sample2(sample, measure):
+def apply_measure_opt_on_mapped_sample2(sample, measure, renormalized = False):
     result = [0]*granularity
     for i in sample:
         for check in range(granularity):
             if i == uniform_support[check]:
                 result[check] += 1
-    result = apply_measure_preserving_opt_to_numbers(result, orders)
+    result = apply_measure_preserving_opt_to_numbers(result, measure)
     help = 0
     calc = 0
     for i in result:
-        calc = calc + i/size
+        calc = calc + i
         result[help] = calc
         help +=1
+
+    if not renormalized:
+        for i in range(granularity):
+            result[i] = result[i]/size
+
     return result
 
 
@@ -210,10 +251,8 @@ def transform_uniform_sample_in_any_dist(sample, quantil):
     for i in sample:
         for check in range(granularity):
             if i < uniform_support[check]:
-                result += [quantil[check] ]
-                i=infty
-
-
+                result += [quantil[check]]
+                i = infty
     result = map_array_on_support(result, distribution_support)
     return result
 
@@ -229,12 +268,47 @@ def transform_mapped_dist_support_sample_on_uniform_support_with_dist(sample, di
     return result
 
 
+def get_empirical_dist_intensity_uniform_sample(empirical_dist):
+    result = []
+    already_occured = 0
+    for i in range(granularity):
+        result += [(size - already_occured)/(1-uniform_support[i]-epsilon)]
+        already_occured = empirical_dist[i]*size
+    return result
 
 
+def get_absolute_difference_null_to_alter(empirical_dist, dens_alter):
+    result = []
+    null_intensity2 = get_empirical_dist_intensity_uniform_sample(empirical_dist)
+   # print(null_intensity)
+    dist_alter = integrate_function(dens_alter, uniform_support)
+    already_occured = 0
+    for i in range(granularity):
+        help = 0
+        if empirical_dist[i]*size < size:
+
+            help = (dens_alter[i]*(size-empirical_dist[i]*size))/(1-dist_alter[i])-null_intensity2[i]#- 1/(1-uniform_support[i])
+        else:
+            help=0
+        result += [help]#- null_intensity[i]]
+        already_occured = empirical_dist[i] * size
+
+    return result
+
+
+def get_stochastic_integral_to_strategy(empirical_dist):
+    cond_intens = get_empirical_dist_intensity_uniform_sample(empirical_dist)
+    result = []
+    lebesgue_part = 0
+    for i in range(granularity):
+        lebesgue_part += cond_intens[i]*(uniform_support[1]-uniform_support[0])
+        result += [empirical_dist[i]*size-lebesgue_part]
+    return result
+"""
 mu_0 = 0
 var_0 = 1
-mu_1 = 0.6#0.05
-var_1 = 0.7#0.8
+mu_1 = 0#0.05
+var_1 = 1
 
 dens_null = normal_density(mu=mu_0,var=var_0)
 dens_alter = normal_density(mu=mu_1, var=var_1)
@@ -243,17 +317,19 @@ distribution_null = integrate_function(dens_null, distribution_support)
 distribution_alter = integrate_function(dens_alter, distribution_support)
 
 quant_null = get_quantile_function(distribution_null)
+#quant_null = get_quantil_path(distribution_null)
 quant_alter = get_quantile_function(distribution_alter)
 
 
 quant_dens_null = differentiate_function(quant_null, uniform_support)#get_normal_quant_density(mu=mu_0,var=var_0)
+#quant_dens_null = get_quantil_dens(quant_null)
 quant_dens_alter = differentiate_function(quant_alter, uniform_support)
-
+quant_dens_alter = get_quantil_dens(quant_alter)
 
 compose_null =integrate_function(prod(compose_functions(distribution_support, quant_null, dens_null), quant_dens_null), uniform_support)
 compose_alter =integrate_function(prod(compose_functions(distribution_support, quant_null, dens_alter), quant_dens_null), uniform_support)
 
-compose_alter_dens = smooth(differentiate_function(compose_alter,uniform_support), 1)
+compose_alter_dens = differentiate_function(compose_alter,uniform_support)
 
 orders = measure_preserving_opt(compose_alter_dens)
 
@@ -263,29 +339,30 @@ create_plot_to_function(differentiate_function(integrate_function(density_final,
 create_plot_to_function(differentiate_function(compose_null,uniform_support), uniform_support, show=False)
 create_plot_to_function(differentiate_function(integrate_function(compose_alter_dens, uniform_support), uniform_support), uniform_support, col='red')
 
+"""
+"""
 create_plot_to_function(integrate_function(density_final, uniform_support), uniform_support, show=False, col='blue')
 create_plot_to_function(compose_null, uniform_support, show=False)
 create_plot_to_function(integrate_function(compose_alter_dens, uniform_support), uniform_support, col='red')
-
-
+"""
+"""
 sample = map_array_on_support(create_sample(size))
-
 sample_alter = transform_mapped_dist_support_sample_on_uniform_support_with_dist(transform_uniform_sample_in_any_dist(sample, quant_alter), distribution_null)
-print(sample_alter)
-print(distribution_support)
 
-#check_opt = apply_measure_opt_on_mapped_sample(sample, orders)
-#check_opt2 = apply_measure_opt_on_mapped_sample(sample_alter, orders)
-check_opt = sample
+
+check_opt = apply_measure_opt_on_mapped_sample2(sample,orders)
 check_opt2 = apply_measure_opt_on_mapped_sample2(sample_alter, orders)
-
-#print(check_opt)
+"""
+#print(check_opt2)
+"""
 create_plot_to_function(empirical_df(sample_alter), uniform_support, col='red', show=False)
-#create_plot_to_function(empirical_df(check_opt2), uniform_support, col='blue', show=False)
 create_plot_to_function(check_opt2, uniform_support, col='blue', show=False)
-create_plot_to_function(empirical_df(check_opt), uniform_support)
+create_plot_to_function(check_opt, uniform_support)
+"""
 
-
+#check_opt2  density_final
+#create_plot_to_function(get_absolute_difference_null_to_alter(check_opt2, dens_alter),uniform_support, col="red")
+#create_plot_to_function(get_empirical_dist_intensity_uniform_sample(check_opt2),uniform_support)
 
 """
   Let X_1, X_2,..., X_n be a sequence of independent random variables with distribution F. We throughout
@@ -313,3 +390,5 @@ create_plot_to_function(empirical_df(check_opt), uniform_support)
 
   So the process M is a good framework for problem (II.)
 """
+
+
