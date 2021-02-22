@@ -46,8 +46,6 @@ def get_quantil_dens(distribution):
 
 
 GoF.create_plot_to_function(get_quantil_path(distribution),uni_sup, show = True)
-
-#
 GoF.create_plot_to_function(get_quantil_dens(distribution), uni_sup, show = True)
 
 #GoF.create_plot_to_function(distribution, dist_sup, show = True)

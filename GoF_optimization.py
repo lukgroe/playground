@@ -5,12 +5,13 @@ import math
 
 
 # Some constants for numerical purposes
-size = 10
+size = 600
+
 number_of_samples = 3
-granularity = 15000
+granularity = 6000
 epsilon = 0.000000000000001
 infty= 1000000000000000
-distribution_support = np.linspace(-6, 6, granularity)
+distribution_support = np.linspace(-4, 4, granularity)
 uniform_support = np.linspace(0, 1, granularity)
 smooth_parameter = 1
 
@@ -23,7 +24,7 @@ def create_sample(size, distribution="uniform"):
 
 def create_plot_to_function(numbers, support=uniform_support, show=True, col='black'):
     plt.plot(support, numbers, 'ro', markersize=.4, color=col)
-    plt.ylim(0, 2)
+   # plt.ylim(0, 2)
     if show:
         plt.show()
 
@@ -189,7 +190,7 @@ def prod(numbers1, numbers2):
 def smooth(numbers, times):
     result = numbers
     for i in range(times):
-        result = differentiate_function(integrate_function(result,uniform_support),uniform_support)
+        result = differentiate_function(integrate_function(result, uniform_support), uniform_support)
     return result
 
 
@@ -227,11 +228,15 @@ def apply_measure_opt_on_mapped_sample(sample, opt_uniform_support):
 
 def apply_measure_opt_on_mapped_sample2(sample, measure, renormalized = False):
     result = [0]*granularity
+
     for i in sample:
         for check in range(granularity):
             if i == uniform_support[check]:
+                #result[measure[check]] += 1
                 result[check] += 1
+
     result = apply_measure_preserving_opt_to_numbers(result, measure)
+
     help = 0
     calc = 0
     for i in result:
