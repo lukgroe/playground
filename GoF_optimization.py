@@ -5,10 +5,10 @@ import math
 
 
 # Some constants for numerical purposes
-size = 600
+size = 20
 
 number_of_samples = 3
-granularity = 6000
+granularity = 2000
 epsilon = 0.000000000000001
 infty= 1000000000000000
 distribution_support = np.linspace(-4, 4, granularity)
