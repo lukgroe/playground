@@ -5,10 +5,10 @@ import math
 
 
 # Some constants for numerical purposes
-size = 20
+size = 2
 
-number_of_samples = 3
-granularity = 2000
+number_of_samples = 1
+granularity = 20
 epsilon = 0.000000000000001
 infty= 1000000000000000
 distribution_support = np.linspace(-4, 4, granularity)
@@ -235,8 +235,17 @@ def apply_measure_opt_on_mapped_sample2(sample, measure, renormalized = False):
                 #result[measure[check]] += 1
                 result[check] += 1
 
-    result = apply_measure_preserving_opt_to_numbers(result, measure)
+    #result = apply_measure_preserving_opt_to_numbers(result, measure)
 
+    result = [result[i] for i in measure]
+
+    # result2 = [-1]*granularity
+    # help=0
+    # for i in measure:
+    #     result2[i] = result[help]
+    #     help += 1
+    #
+    # result = result2
     help = 0
     calc = 0
     for i in result:
