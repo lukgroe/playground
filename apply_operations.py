@@ -9,7 +9,7 @@ size = gof.size
 mu_0 = 0
 var_0 = 1
 mu_1 = 0
-var_1 = 1
+var_1 = .5
 
 # THE DENSITIES
 density_null = gof.normal_density(mu=mu_0, var=var_0)
@@ -44,7 +44,8 @@ gof.create_plot_to_function(gof.empirical_df(sample_under_alternative, gof.distr
 
 """ STEP 3: Apply the null-distribution on the underlying data set. Compute the distribution of the resulting transformed sample """
 distribution_null = gof.integrate_function(density_null)
-sample_under_alternative_apply_null = gof.transform_mapped_dist_support_sample_on_uniform_support_with_dist(sample_under_alternative, distribution_null)
+sample_under_alternative_apply_null = gof.transform_mapped_dist_support_sample_on_uniform_support_with_dist(
+    sample_under_alternative, distribution_null, )
 
 
 

@@ -6,15 +6,23 @@ import matplotlib.pyplot as plt
 class Numericals(object):
 
     # Default-Values
-    granularity = 3000
+    granularity = 6000
     support_distribution = list(np.linspace(-4, 4, granularity))
     support_uniform = list(np.linspace(0, 1, granularity))
-    mu=1
-    var=1
+
 
 
     # Fixed-Values
     infty = 1000000000000000
+
+    @staticmethod
+    def empirical_df(numbers, support):
+        result = np.array([])
+        for time in support:
+            occur = [i for i in numbers if i!=None if i <= time]
+            result = np.concatenate((result, np.array([len(occur) / len(numbers)])))
+        result = list(result)
+        return result
 
     @staticmethod
     def normal_density(support, mu=0, var=1):
@@ -86,9 +94,10 @@ class Numericals(object):
     def map_number_on_support(number, support=support_uniform):
         result = None
         for i in support:
-            if number < i:
-                result = i
-                break
+            if number is not None:
+                if number < i:
+                    result = i
+                    break
         return result
 
     @staticmethod
@@ -99,7 +108,7 @@ class Numericals(object):
         return result
 
     @staticmethod
-    def get_quantil_dens(quantil):
+    def get_quantile_dens(quantil):
         result = Numericals.differentiate(quantil, Numericals.support_uniform)
         help = 0
         for i in result:
@@ -110,8 +119,97 @@ class Numericals(object):
         return result
 
     @staticmethod
-    def make_plot(numbers, support=support_uniform, show=True, col='black'):
+    def transform_mapped_dist_support_sample_on_uniform_support_with_dist(sample, distribution, support_distribution):
+        result = []
+        for i in sample:
+            for check in range(len(distribution)):
+                if i is not None:
+                    if i < support_distribution[check]:
+                        result += [distribution[check]]
+                        i = Numericals.infty
+        result = Numericals.map_array_on_support(result, Numericals.support_uniform)
+        return result
+
+    @staticmethod
+    def transform_uniform_sample_in_any_dist(sample, quantile, distribution_support):
+        result = []
+        for i in sample:
+            for check in range(Numericals.granularity):
+                if i < Numericals.support_uniform[check]:
+                    result += [quantile[check]]
+                    i = Numericals.infty
+        result = Numericals.map_array_on_support(result, distribution_support)
+        return result
+
+    @staticmethod
+    def compose_functions(support_2, numbers_1, numbers_2):
+        result = []
+        support_2 = list(support_2)
+        support_2 += [Numericals.infty]
+        numbers_2 = list(numbers_2)
+        numbers_2 += [numbers_2[len(numbers_2) - 1]]
+
+        for i in numbers_1:
+            last = i
+            for j in range(Numericals.granularity + 1):
+                if support_2[j] > last:
+                    result += [numbers_2[j]]
+                    last = Numericals.infty
+        result = list(result)
+        return result
+
+    @staticmethod
+    def prod(numbers1, numbers2):
+        result = []
+        for i, j in zip(numbers1, numbers2):
+            result += [i * j]  #
+
+        return result
+
+    @staticmethod
+    def measure_preserving_opt(numbers, rev=True):
+        result = []
+        list_to_check = list(numbers)
+        location = 0
+        for check in range(len(numbers)):
+            help = 0
+            for i in range(len(numbers)):
+                if help <= list_to_check[i]:
+                    help = list_to_check[i]
+                    location = i
+            result += [location]
+            list_to_check[location] = -1
+        if rev:
+            list.reverse(result)
+        return result
+
+    @staticmethod
+    def apply_measure_opt_on_mapped_sample2(sample, measure, renormalized=False):
+        result = [0] * len(measure)
+
+        for i in sample:
+            for check in range(len(measure)):
+                if i == Numericals.support_uniform[check]:
+                    result[check] += 1
+
+        result = [result[i] for i in measure]
+
+        help = 0
+        calc = 0
+        for i in result:
+            calc = calc + i
+            result[help] = calc
+            help += 1
+
+        if not renormalized:
+            for i in range(len(measure)):
+                result[i] = result[i] / len(sample)
+
+        return result
+
+    @staticmethod
+    def make_plot(numbers, support, show=True, col='black'):
         plt.plot(support, numbers, 'ro', markersize=.4, color=col)
-        # plt.ylim(0, 2)
         if show:
             plt.show()
+
