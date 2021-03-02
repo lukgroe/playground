@@ -1,12 +1,13 @@
 import numpy as np
 import math
 import matplotlib.pyplot as plt
+import random
 
 
 class Numericals(object):
 
     # Default-Values
-    granularity = 6000
+    granularity = 1500
     support_distribution = list(np.linspace(-4, 4, granularity))
     support_uniform = list(np.linspace(0, 1, granularity))
 
@@ -168,6 +169,7 @@ class Numericals(object):
 
     @staticmethod
     def measure_preserving_opt(numbers, rev=True):
+
         result = []
         list_to_check = list(numbers)
         location = 0
@@ -204,12 +206,18 @@ class Numericals(object):
         if not renormalized:
             for i in range(len(measure)):
                 result[i] = result[i] / len(sample)
-
         return result
 
     @staticmethod
-    def make_plot(numbers, support, show=True, col='black'):
+    def make_plot(numbers, support, show=True, col='black', label=None):
+        plt.plot(0, 0, markersize=.4, color=col, label=label)
+        if label !=None:
+            plt.legend()
         plt.plot(support, numbers, 'ro', markersize=.4, color=col)
         if show:
             plt.show()
 
+    @staticmethod
+    def apply_measure_preserving_opt_to_numbers(numbers, measure):
+        result = [numbers[i] for i in measure]
+        return result

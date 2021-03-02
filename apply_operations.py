@@ -70,7 +70,7 @@ order_to_optimize = gof.measure_preserving_opt(density_alternative_transformed)
 
 
 #print(order_to_optimize)
-#order_to_optimize = random.sample(range(0,len(order_to_optimize)), len(order_to_optimize))
+#order_to_optimize = a
 #print(order_to_optimize)
 
 density_final = gof.apply_measure_preserving_opt_to_numbers(density_alternative_transformed, order_to_optimize)
